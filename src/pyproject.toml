@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "Air Pollution Stream Pipeline"
+version = "0.1.0"
+description = "A data pipeline to process and analyze air pollution data in real-time using Kafka and Flink. This project aims to provide insights and alerts on air quality by leveraging scalable and fault-tolerant stream processing technologies."
+authors = ["Snehangsu De <desnehangsu@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.11"
+apache-flink = "1.18"
+kafka-python = "^2.0.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

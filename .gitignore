@@ -1,0 +1,3 @@
+pyflink/lib/*.jar
+.env
+src/config
