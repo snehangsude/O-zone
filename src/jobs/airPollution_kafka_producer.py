@@ -1,9 +1,11 @@
+# type: ignore
 import time
 import json
 import pathlib
-import requests # type: ignore
+import requests 
 from datetime import datetime
-from kafka import KafkaProducer # type: ignore
+from kafka import KafkaProducer 
+import uuid
 from modules.YamlReader import YamlReader
 
 # Predominatly for dev-testing
@@ -11,7 +13,6 @@ import sys
 
 current_path = pathlib.Path(__file__)
 config = YamlReader.read_config(f"{current_path.parents[1]}/config/config.yml")
-
 
 ZIP_CODES = config['postal_codes']
 API_KEY = config["openWeatherData_API"]
@@ -42,6 +43,7 @@ def get_openWeather_airPollution_data():
         parameters['appid'] = API_KEY
         openWeather_data = requests.get(url=url, params=parameters).json()
         normalized_data = {
+            'message_id' : uuid.uuid4().hex,
             'date': current_datetime.strftime('%Y-%m-%d'),
             'time': current_datetime.strftime('%H:%M'),    
             'lat': openWeather_data['coord']['lat'],
@@ -80,7 +82,7 @@ def main():
             print(f"Produced: {messages}\n")
             kafka_producer.flush()
         
-        time.sleep(100)
+        time.sleep(10)
 
 if __name__ == "__main__":
     main()

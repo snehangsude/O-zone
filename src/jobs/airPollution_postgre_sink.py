@@ -25,7 +25,8 @@ POSTGRES_HOST = "postgres:5432"
 
 def parse_data(data: str) -> Row:
     data = json.loads(data)
-    date = datetime.strptime(data['date'], "%Y-%m-%d")
+    message_id  = data['message_id']
+    date = datetime.strptime(data['date'], "%Y-%m-%d").strftime("%Y-%m-%d")
     time = data['time']
     lat = data['lat']
     lon = data['lon']
@@ -41,6 +42,7 @@ def parse_data(data: str) -> Row:
     ammonia = data['ammonia']
     
     return Row(
+        message_id,
         date, 
         time,
         lat,
@@ -62,7 +64,8 @@ def parse_data(data: str) -> Row:
 def filter_temperatures(value: str) -> str | None:
     AQI_THRESHOLD = 3
     data = json.loads(value)
-    date = datetime.strptime(data['date'], "%Y-%m-%d")
+    message_id = data['message_id']
+    date = datetime.strptime(data['date'], "%Y-%m-%d").strftime("%Y-%m-%d")
     time = data['time']
     lat = data['lat']
     lon = data['lon']
@@ -78,6 +81,7 @@ def filter_temperatures(value: str) -> str | None:
     ammonia = data['ammonia']
     if aqi > AQI_THRESHOLD:
         alert_message = {
+            "message_id" : message_id,
             "date" : date,
             "time" : time,
             "lat" : lat,
@@ -187,13 +191,14 @@ def main() -> None:
     logger.info("Configuring source and sinks")
     kafka_source = configure_source(KAFKA_HOST)
     sql_dml = (
-    "INSERT INTO air_pollution_data (date, time, lat, lon, city, aqi, carbon_monoxide, nitrogen_monoxide, nitrogen_dioxide, ozone, sulphur_dioxide, fine_particles2_5, coarse_particles10, ammonia, message) "
+    "INSERT INTO air_pollution_data (message_id, date, time, lat, lon, city, aqi, carbon_monoxide, nitrogen_monoxide, nitrogen_dioxide, ozone, sulphur_dioxide, fine_particles2_5, coarse_particles10, ammonia) "
     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 )
 
     TYPE_INFO = Types.ROW(
         [
-            Types.SQL_DATE(),  # date
+            Types.STRING(),  # message_id
+            Types.STRING(),  # date
             Types.STRING(), # time
             Types.FLOAT(),  # lat
             Types.FLOAT(),  # lon
@@ -207,7 +212,7 @@ def main() -> None:
             Types.FLOAT(),  # fine_particles2_5
             Types.FLOAT(),  # coarse_particles10
             Types.FLOAT(),  # ammonia
-            Types.STRING(), # message
+            # Types.STRING(), # message
         ]
     )
 
