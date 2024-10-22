@@ -7,6 +7,8 @@ from datetime import datetime
 from kafka import KafkaProducer 
 import uuid
 from modules.YamlReader import YamlReader
+from modules.class_BigQuery import BigQueryManager
+from google.cloud import bigquery
 
 # Predominatly for dev-testing
 import sys
@@ -14,20 +16,25 @@ import sys
 current_path = pathlib.Path(__file__)
 config = YamlReader.read_config(f"{current_path.parents[1]}/config/config.yml")
 
-ZIP_CODES = config['postal_codes']
 API_KEY = config["openWeatherData_API"]
 OPENWEATHER_ENDPOINT = config["openWeatherData_endpoint"]
+BQ_LOCATION = config["biqQuery_location"]
+BQ_PROJECT = config["bigQuery_projectId"]
+BQ_DATASET = config["bigQuery_datasetId"]
+BQ_TABLE = config["bigQuery_tableId"]
 
+def get_coordinates():
 
-def get_coordinates(zip_code, country_code):
-    url = f"{OPENWEATHER_ENDPOINT}/geo/1.0/zip"
-    parameters = {
-        'zip': f"{zip_code},{country_code}",
-        'appid': API_KEY
-    }
-    response = requests.get(url, params=parameters) 
-    return response.json()
-
+    client = bigquery.Client()
+    bigquery_engine = BigQueryManager(
+        location=BQ_LOCATION,
+        dataset_id=BQ_DATASET,
+        table_id=BQ_TABLE, 
+        client=client
+    )
+    query = f"SELECT lat, lon, name FROM `{BQ_PROJECT}.{BQ_DATASET}.{BQ_TABLE}` LIMIT 10"
+    zipcodes = bigquery_engine.extract_data(query=query)
+    return zipcodes
 
 def get_openWeather_airPollution_data():
     
@@ -35,20 +42,18 @@ def get_openWeather_airPollution_data():
     current_datetime = datetime.now().replace(second=0, microsecond=0)
     
     timeblock_data = []
-    code_pairs = [(zip_code, country_code) for country_code, zip_codes in ZIP_CODES.items() for zip_code in zip_codes]
+    zipcodes = get_coordinates()
 
-
-    for idx, val in code_pairs:
-        parameters = {key: value for key, value in get_coordinates(idx, val).items() if key in ['lat', 'lon', 'name']}
-        parameters['appid'] = API_KEY
-        openWeather_data = requests.get(url=url, params=parameters).json()
+    for ele in zipcodes:
+        ele['appid'] = API_KEY
+        openWeather_data = requests.get(url=url, params=ele).json()
         normalized_data = {
             'message_id' : uuid.uuid4().hex,
             'date': current_datetime.strftime('%Y-%m-%d'),
             'time': current_datetime.strftime('%H:%M'),    
             'lat': openWeather_data['coord']['lat'],
             'lon': openWeather_data['coord']['lon'],
-            'city': parameters['name'],
+            'city': ele['name'],
             'aqi': openWeather_data['list'][0]['main']['aqi'],
             'carbon_monoxide': openWeather_data['list'][0]['components']['co'],
             'nitrogen_monoxide': openWeather_data['list'][0]['components']['no'],
