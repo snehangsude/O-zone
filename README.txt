@@ -30,7 +30,7 @@ export PYTHONPATH=src
 
 docker compose exec flink-jobmanager flink run -py /opt/air-pollution/jobs/airPollution_postgre_sink.py
 
-docker compose exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic alerts --from-beginning
+docker compose exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic high_pollution_data --from-beginning
 
 
 Check: docker-compose exec flink-jobmanager /bin/bash

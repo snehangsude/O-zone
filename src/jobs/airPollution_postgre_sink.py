@@ -21,8 +21,6 @@ from pyflink.datastream.connectors.kafka import (
 )
 
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "./config/project-ozone-stream-primarySA.json"
-
 KAFKA_HOST = "kafka:19092"
 POSTGRES_HOST = "postgres:5432"
 
@@ -117,7 +115,6 @@ def initialize_env() -> StreamExecutionEnvironment:
         f"file://{root_dir}/lib/flink-connector-jdbc-3.1.2-1.18.jar",
         f"file://{root_dir}/lib/postgresql-42.7.3.jar",
         f"file://{root_dir}/lib/flink-sql-connector-kafka-3.1.0-1.18.jar",
-        f"file://{root_dir}/modules/SimbaODBCDriverforGoogleBigQuery64_3.0.7.1016/lib/GoogleBigQueryODBC.did"
     )
     return env
 
@@ -178,48 +175,6 @@ def configure_kafka_sink(server: str, topic_name: str) -> KafkaSink:
         .build()
     )
 
-from pyflink.datastream.connectors import JdbcSink
-from pyflink.datastream.connectors.jdbc import JdbcConnectionOptions, JdbcExecutionOptions
-from google.cloud import bigquery
-import os
-
-
-
-def configure_bigquery_sink(project_id: str, dataset_id: str, table_id: str, type_info: Types) -> JdbcSink:
-    """Makes BigQuery sink initialization."""
-    client = bigquery.Client(project=project_id)
-    dataset_ref = client.dataset(dataset_id)
-    table_ref = dataset_ref.table(table_id)
-
-    sql_dml = f"""
-    INSERT INTO `{project_id}.{dataset_id}.{table_id}`
-    (message_id, date, time, lat, lon, city, aqi, carbon_monoxide, nitrogen_monoxide, 
-    nitrogen_dioxide, ozone, sulphur_dioxide, fine_particles2_5, coarse_particles10, ammonia)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """
-
-    return JdbcSink.sink(
-        sql_dml,
-        type_info,
-        JdbcConnectionOptions.JdbcConnectionOptionsBuilder()
-        .with_url(f"jdbc:bigquery://https://www.googleapis.com/bigquery/v2:443;ProjectId={project_id};OAuthType=0;")
-        .with_driver_name("com.simba.googlebigquery.jdbc42.Driver")
-        .with_user_name("snehangsude-ozone@project-ozone-stream.iam.gserviceaccount.com")
-        .with_password("src/config/project-ozone-stream-primarySA.json")
-        .build(),
-        JdbcExecutionOptions.builder()
-        .with_batch_interval_ms(1000)
-        .with_batch_size(200)
-        .with_max_retries(5)
-        .build(),
-    )
-
-# In your main function, replace the postgres_sink with:
-#bigquery_sink = configure_bigquery_sink("your_project_id", "your_dataset_id", "your_table_id", TYPE_INFO)
-#transformed_data.add_sink(bigquery_sink)
-
-
-
 
 def main() -> None:
     """Main flow controller"""
@@ -260,9 +215,7 @@ def main() -> None:
         ]
     )
 
-    # jdbc_sink = configure_postgre_sink(sql_dml, TYPE_INFO)
-        # In your main function, replace the postgres_sink with:
-    bigquery_sink = configure_bigquery_sink("project-ozone-stream", "Ozone", "airPollutionOpenWeatherData", TYPE_INFO)
+    jdbc_sink = configure_postgre_sink(sql_dml, TYPE_INFO)
 
     kafka_sink = configure_kafka_sink(KAFKA_HOST, "high_pollution_data")
     logger.info("Source and sinks initialized")
@@ -282,9 +235,7 @@ def main() -> None:
     logger.info("Ready to sink data")
     alarms_data.print()
     alarms_data.sink_to(kafka_sink)
-    # transformed_data.add_sink(jdbc_sink)
-    transformed_data.add_sink(bigquery_sink)
-
+    transformed_data.add_sink(jdbc_sink)
 
     # Execute the Flink job
     env.execute("OpenWeather: Air Pollution Data")
