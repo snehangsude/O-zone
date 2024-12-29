@@ -1,5 +1,6 @@
 pyflink/lib/*.jar
 .*
-src/config
+src/config/config.yml
+src/config/*.json
 src/modules/__pycache__
 conf

@@ -1,0 +1,15 @@
+openWeatherData_API : "******************************"
+openWeatherData_endpoint : "https://enter-the-enpoint-here/v1"
+openMeteoData_endpoint: "https://enter-the-enpoint-here/v2"
+topic_name_openWeather : openWeather_pollution_data
+topic_name_openMeteo : openMeteo_pollution_data
+topic_name_combined : high_pollution_alerts
+openWeather_db : pollutantsOpenWeather
+openMeteo_db : pollutantsOpenMeteo
+
+
+
+biqQuery_location : "enter-location"
+bigQuery_projectId : "enter-project-id"
+bigQuery_datasetId : "enter-dataset-name"
+bigQuery_tableId :  "enter-table-name"
