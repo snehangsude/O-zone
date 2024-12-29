@@ -1,15 +1,25 @@
-### Execute in order
+#!/bin/bash
 
+GREEN='\033[0;32m'
+NC='\033[0m'
 
+# Create Kafka topics
+echo "========================================="
+echo -e "${GREEN}Creating Kafka topics...${NC}"
+echo
 docker compose exec kafka kafka-topics --create --topic openWeather_pollution_data --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
-
 docker compose exec kafka kafka-topics --create --topic openMeteo_pollution_data --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
-
 docker compose exec kafka kafka-topics --create --topic openweather_high_pollution --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+docker compose exec kafka kafka-topics --create --topic openmeteo_high_pollution --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
 
-docker exec -it o-zone-postgres-1 psql -U admin_user -d airPollution_db
+echo
+echo -e "${GREEN}Kafka topics created successfully.${NC}"
+echo
 
-
+# Connect to PostgreSQL and create tables
+echo -e "${GREEN}Creating tables in PostgreSQL...${NC}"
+echo
+docker exec -i o-zone-postgres-1 psql -U admin_user -d airPollution_db <<EOF
 CREATE TABLE pollutantsOpenWeather (
     message_id VARCHAR(255) PRIMARY KEY,
     date VARCHAR(255) NOT NULL,
@@ -42,32 +52,15 @@ CREATE TABLE pollutantsOpenMeteo (
     sulphur_dioxide FLOAT NOT NULL,
     fine_particles2_5 FLOAT NOT NULL,
     coarse_particles10 FLOAT NOT NULL,
-    aerosol_optical_depth FLOAT NOT NULL,  
-    dust FLOAT NOT NULL,                   
-    uv_index FLOAT NOT NULL,               
-    uv_index_clear_sky FLOAT NOT NULL      
+    aerosol_optical_depth FLOAT NOT NULL,
+    dust FLOAT NOT NULL,
+    uv_index FLOAT NOT NULL,
+    uv_index_clear_sky FLOAT NOT NULL
 );
+EOF
+
+echo
+echo -e "${GREEN}Tables created successfully.${NC}"
+echo "============================================="
 
 
-export PYTHONPATH=src
-
-export GOOGLE_APPLICATION_CREDENTIALS=src/config/project-ozone-stream-primarySA.json
-
-
-python3 src/jobs/airPollution_kafka_producer.py 
-
-docker compose exec flink-jobmanager flink run -py /opt/air-pollution/jobs/ow_postgre_sink.py
-
-docker compose exec flink-jobmanager flink run -py /opt/air-pollution/jobs/om_postgre_sink.py
-
-
-docker compose exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic openweather_high_pollution --from-beginning
-
-docker compose exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic openmeteo_high_pollution --from-beginning
-
-
-
-Check: docker-compose exec flink-jobmanager /bin/bash
-
-
-src/jobs/pollution_postgres_sink.py

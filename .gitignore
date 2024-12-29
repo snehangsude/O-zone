@@ -2,3 +2,4 @@ pyflink/lib/*.jar
 .*
 src/config
 src/modules/__pycache__
+conf

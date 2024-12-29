@@ -24,7 +24,7 @@ from pyflink.datastream.connectors.kafka import (
 KAFKA_HOST = "kafka:19092"
 POSTGRES_HOST = "postgres:5432"
 
-def parse_data(data: str) -> Row:
+def parse_openweather_data(data: str) -> Row:
     data = json.loads(data)
     message_id  = data['message_id']
     date = datetime.strptime(data['date'], "%Y-%m-%d").strftime("%Y-%m-%d")
@@ -61,8 +61,8 @@ def parse_data(data: str) -> Row:
     )
 
 # TODO: More complex logic
-def filter_temperatures(value: str) -> str | None:
-    AQI_THRESHOLD = 3
+def filter_openweather_pollution(value: str) -> str | None:
+    AQI_THRESHOLD = 1
     data = json.loads(value)
     message_id = data['message_id']
     date = datetime.strptime(data['date'], "%Y-%m-%d").strftime("%Y-%m-%d")
@@ -102,7 +102,7 @@ def filter_temperatures(value: str) -> str | None:
     return None
 
 
-def initialize_env() -> StreamExecutionEnvironment:
+def initialize_openweather_env() -> StreamExecutionEnvironment:
     """Makes stream execution environment initialization"""
     env = StreamExecutionEnvironment.get_execution_environment()
 
@@ -119,7 +119,7 @@ def initialize_env() -> StreamExecutionEnvironment:
     return env
 
 
-def configure_source(server: str, earliest: bool = False) -> KafkaSource:
+def configure_openweather_source(server: str, earliest: bool = False) -> KafkaSource:
     """Makes kafka source initialization"""
     properties = {
         "bootstrap.servers": server,
@@ -141,7 +141,7 @@ def configure_source(server: str, earliest: bool = False) -> KafkaSource:
     return kafka_source
 
 
-def configure_postgre_sink(sql_dml: str, type_info: Types) -> JdbcSink:
+def configure_openweather_postgre_sink(sql_dml: str, type_info: Types) -> JdbcSink:
     """Makes postgres sink initialization. Config params are set in this function."""
     return JdbcSink.sink(
         sql_dml,
@@ -160,7 +160,7 @@ def configure_postgre_sink(sql_dml: str, type_info: Types) -> JdbcSink:
     )
 
 
-def configure_kafka_sink(server: str, topic_name: str) -> KafkaSink:
+def configure_openweather_kafka_sink(server: str, topic_name: str) -> KafkaSink:
 
     return (
         KafkaSink.builder()
@@ -176,7 +176,7 @@ def configure_kafka_sink(server: str, topic_name: str) -> KafkaSink:
     )
 
 
-def main() -> None:
+def openweather_execute() -> None:
     """Main flow controller"""
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
@@ -184,13 +184,13 @@ def main() -> None:
 
     # Initialize environment
     logger.info("Initializing environment")
-    env = initialize_env()
+    env = initialize_openweather_env()
 
     # Define source and sinks
     logger.info("Configuring source and sinks")
-    kafka_source = configure_source(KAFKA_HOST)
+    kafka_source = configure_openweather_source(KAFKA_HOST)
     sql_dml = (
-    "INSERT INTO air_pollution_data (message_id, date, time, lat, lon, city, aqi, carbon_monoxide, nitrogen_monoxide, nitrogen_dioxide, ozone, sulphur_dioxide, fine_particles2_5, coarse_particles10, ammonia) "
+    "INSERT INTO pollutantsOpenWeather (message_id, date, time, lat, lon, city, aqi, carbon_monoxide, nitrogen_monoxide, nitrogen_dioxide, ozone, sulphur_dioxide, fine_particles2_5, coarse_particles10, ammonia) "
     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 )
 
@@ -211,13 +211,12 @@ def main() -> None:
             Types.FLOAT(),  # fine_particles2_5
             Types.FLOAT(),  # coarse_particles10
             Types.FLOAT(),  # ammonia
-            # Types.STRING(), # message
         ]
     )
 
-    jdbc_sink = configure_postgre_sink(sql_dml, TYPE_INFO)
+    jdbc_sink = configure_openweather_postgre_sink(sql_dml, TYPE_INFO)
 
-    kafka_sink = configure_kafka_sink(KAFKA_HOST, "high_pollution_data")
+    kafka_sink = configure_openweather_kafka_sink(KAFKA_HOST, "openweather_high_pollution")
     logger.info("Source and sinks initialized")
 
     # Create a DataStream from the Kafka source and assign watermarks
@@ -226,9 +225,9 @@ def main() -> None:
     )
 
     # Make transformations to the data stream
-    transformed_data = data_stream.map(parse_data, output_type=TYPE_INFO)
+    transformed_data = data_stream.map(parse_openweather_data, output_type=TYPE_INFO)
     alarms_data = data_stream.map(
-        filter_temperatures, output_type=Types.STRING()
+        filter_openweather_pollution, output_type=Types.STRING()
     ).filter(lambda x: x is not None)
     logger.info("Defined transformations to data stream")
 
@@ -242,4 +241,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    openweather_execute()

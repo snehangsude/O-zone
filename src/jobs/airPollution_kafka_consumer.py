@@ -35,7 +35,7 @@ def main() -> None:
     # NOTE: FlinkKafkaConsumer class is deprecated
     kafka_source = (
         KafkaSource.builder()
-        .set_topics("high_pollution_data")
+        .set_topics("openweather_high_pollution")
         .set_properties(properties)
         .set_starting_offsets(offset)
         .set_value_only_deserializer(SimpleStringSchema())
